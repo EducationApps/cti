@@ -1,3 +1,5 @@
+!https://badge.fury.io/rb/cti.png!:http://badge.fury.io/rb/cti
+
 h1. CTI
 
 CTI is a gem that implements Multiple Table Inheritance for ActiveRecord models.
