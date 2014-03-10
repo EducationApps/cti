@@ -23,39 +23,43 @@ module Cti
         alias_method_chain :predecessor, :build
 
         # Expose columns from the predecessor
-        self._predecessor_klass.columns.reject{|c| c.primary || c.name =~ /^heir_/}.map(&:name).each do |att|
-          define_method(att) do
-            predecessor.send(att)
+        begin
+          self._predecessor_klass.columns.reject{|c| c.primary || c.name =~ /^heir_/}.map(&:name).each do |att|
+            define_method(att) do
+              predecessor.send(att)
+            end
+            define_method("#{att}=") do |val|
+              predecessor.send("#{att}=",val)
+            end
           end
-          define_method("#{att}=") do |val|
-            predecessor.send("#{att}=",val)
-          end
-        end
-
+        
         # Expose associations from the predecessor
-        self._predecessor_klass.reflect_on_all_associations.reject{|a| a.name == :heir}.each do |association|
-          define_method(association.name) do
-            predecessor.send(association.name)
+          self._predecessor_klass.reflect_on_all_associations.reject{|a| a.name == :heir}.each do |association|
+            define_method(association.name) do
+              predecessor.send(association.name)
+            end
+            define_method("#{association.name}=") do |val|
+              predecessor.send("#{association.name}=",val)
+            end
           end
-          define_method("#{association.name}=") do |val|
-            predecessor.send("#{association.name}=",val)
-          end
-        end
-
+        
         # Include validations from the predecessor
-        self._predecessor_klass.validators.each do |validator|
-          self.validates_with(validator.class, :attributes => validator.attributes, :options => validator.options)
+          self._predecessor_klass.validators.each do |validator|
+            self.validates_with(validator.class, :attributes => validator.attributes, :options => validator.options)
+          end
+
+        # Expose methods from predecessor
+          self._predecessor_klass.get_heritage_exposed_methods.each do |method_symbol|
+            define_method(method_symbol.to_s) do |*args|
+              predecessor.send(method_symbol.to_s, *args)
+            end
+          end
+        rescue
+          Rails.logger.error "Databse not set up yet"
         end
 
         # We need to make sure that updated_at values in the predecessor table is updated when the heir is saved.
         before_update :touch_predecessor, :unless => lambda { predecessor.changed? }
-
-        # Expose methods from predecessor
-        self._predecessor_klass.get_heritage_exposed_methods.each do |method_symbol|
-          define_method(method_symbol.to_s) do |*args|
-            predecessor.send(method_symbol.to_s, *args)
-          end
-        end
 
         # This piece deals with errors names
         # and simply strips "predecessor." part from all the predecessor errors.
