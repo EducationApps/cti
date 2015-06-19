@@ -45,7 +45,7 @@ module Cti
         
         # Include validations from the predecessor
           self._predecessor_klass.validators.each do |validator|
-            self.validates_with(validator.class, :attributes => validator.attributes, :options => validator.options)
+            self.validates_with(validator.class, validator.options.dup.merge({attributes: validator.attributes}))
           end
 
         # Expose methods from predecessor
